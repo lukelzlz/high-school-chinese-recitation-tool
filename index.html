@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>高中语文背诵工具</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>高中语文背诵工具</h1>
+      <div class="stats">
+        <span id="statUsage">使用次数: 0</span>
+        <span id="statChars">输入字数: 0</span>
+      </div>
+    </header>
+
+    <main>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="搜索篇目...">
+      </div>
+
+      <select id="textSelect" class="text-select">
+        <option value="">加载中...</option>
+      </select>
+
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <div class="progress-text" id="progressText">第 1 句，请背诵 | 进度：0/0</div>
+
+      <div class="hint-display" id="hintDisplay"></div>
+
+      <div class="compare-display" id="compareDisplay"></div>
+
+      <div class="input-area">
+        <input type="text" id="inputField" placeholder="请输入背诵内容..." autofocus>
+      </div>
+
+      <div class="button-group">
+        <button id="submitBtn" class="btn btn-primary">提交</button>
+        <button id="hintBtn" class="btn btn-secondary">提示</button>
+        <button id="restartBtn" class="btn btn-warning" disabled>重新开始</button>
+        <button id="resetStatsBtn" class="btn btn-danger">重置统计</button>
+      </div>
+
+      <div class="result-display" id="resultDisplay"></div>
+    </main>
+
+    <footer>
+      <p>纯前端应用 | 数据存储在本地 | <a href="https://github.com/lukelzlz/high-school-chinese-recitation-tool" target="_blank">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="data/texts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
