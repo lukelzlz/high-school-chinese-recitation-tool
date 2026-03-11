@@ -8,4 +8,4 @@ bucket = "./"
 [[d1_databases]]
 binding = "btw"
 database_name = "recitation-stats"
-database_id = "placeholder-needs-real-id"
+database_id = "771cf90b-ec0c-42e5-a8dd-3287e3e5e722"
