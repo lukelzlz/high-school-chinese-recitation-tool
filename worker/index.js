@@ -31,7 +31,7 @@ export default {
           return jsonResponse({ error: '缺少必填字段' }, 400);
         }
 
-        await env.DB.prepare(
+        await env.btw.prepare(
           'INSERT INTO recitation_events (user_id, text_key, correct_count, total_count) VALUES (?, ?, ?, ?)'
         )
           .bind(user_id, text_key, Number(correct_count), Number(total_count))
@@ -51,13 +51,13 @@ export default {
           return jsonResponse({ error: '缺少 uid 参数' }, 400);
         }
 
-        const totalResult = await env.DB.prepare(
+        const totalResult = await env.btw.prepare(
           'SELECT COUNT(*) as total_times, SUM(correct_count) as total_correct, SUM(total_count) as total_sentences FROM recitation_events WHERE user_id = ?'
         )
           .bind(uid)
           .first();
 
-        const textsResult = await env.DB.prepare(
+        const textsResult = await env.btw.prepare(
           'SELECT text_key, COUNT(*) as times, SUM(correct_count) as correct, SUM(total_count) as total FROM recitation_events WHERE user_id = ? GROUP BY text_key ORDER BY times DESC LIMIT 10'
         )
           .bind(uid)
@@ -77,11 +77,11 @@ export default {
     // GET /api/stats - 全站统计
     if (pathname === '/api/stats' && request.method === 'GET') {
       try {
-        const totalResult = await env.DB.prepare(
+        const totalResult = await env.btw.prepare(
           'SELECT COUNT(*) as total_times, COUNT(DISTINCT user_id) as total_users FROM recitation_events'
         ).first();
 
-        const topTexts = await env.DB.prepare(
+        const topTexts = await env.btw.prepare(
           'SELECT text_key, COUNT(*) as times, AVG(correct_count * 100.0 / total_count) as avg_rate FROM recitation_events GROUP BY text_key ORDER BY times DESC LIMIT 10'
         ).all();
 
