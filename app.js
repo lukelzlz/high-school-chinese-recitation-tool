@@ -21,6 +21,87 @@ let tryCount = 0;
 let correctCount = 0;
 let hintCooldown = false;
 
+// === 统计上报相关 ===
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function getBrowserFingerprint() {
+  const raw = (navigator.userAgent || '') + '|' + screen.width + '|' + screen.height;
+  return 'u_' + simpleHash(raw);
+}
+
+function reportStats(textKey, correctCnt, totalCnt) {
+  try {
+    const uid = getBrowserFingerprint();
+    fetch('/api/stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text_key: textKey,
+        correct_count: correctCnt,
+        total_count: totalCnt,
+        user_id: uid,
+      }),
+    }).catch(() => {}); // 静默失败
+  } catch (e) {
+    // 静默失败，不影响用户体验
+  }
+}
+
+async function fetchGlobalStats() {
+  try {
+    const res = await fetch('/api/stats');
+    if (!res.ok) throw new Error('fetch failed');
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+function showStatsModal() {
+  const modal = document.getElementById('statsModal');
+  const content = document.getElementById('statsContent');
+  content.innerHTML = '<p style="text-align:center;color:#999;">加载中...</p>';
+  modal.classList.add('active');
+
+  fetchGlobalStats().then(data => {
+    if (!data) {
+      content.innerHTML = '<p style="text-align:center;color:#e74c3c;">加载失败，请稍后重试</p>';
+      return;
+    }
+    let html = `
+      <div class="stats-summary">
+        <div class="stats-item"><span class="stats-number">${data.total_times}</span><span class="stats-label">总背诵次数</span></div>
+        <div class="stats-item"><span class="stats-number">${data.total_users}</span><span class="stats-label">参与用户数</span></div>
+      </div>
+    `;
+    if (data.top_texts && data.top_texts.length > 0) {
+      html += '<h3 style="margin:16px 0 10px;font-size:16px;">🔥 最热门篇目 Top10</h3>';
+      html += '<div class="stats-table">';
+      html += '<div class="stats-row stats-header"><span class="stats-rank">#</span><span class="stats-name">篇目</span><span class="stats-count">次数</span><span class="stats-rate">平均正确率</span></div>';
+      data.top_texts.forEach((item, i) => {
+        const rate = item.avg_rate != null ? item.avg_rate.toFixed(1) + '%' : '-';
+        html += `<div class="stats-row"><span class="stats-rank">${i + 1}</span><span class="stats-name">${item.text_key}</span><span class="stats-count">${item.times}</span><span class="stats-rate">${rate}</span></div>`;
+      });
+      html += '</div>';
+    } else {
+      html += '<p style="text-align:center;color:#999;margin-top:20px;">暂无统计数据</p>';
+    }
+    content.innerHTML = html;
+  });
+}
+
+function closeStatsModal() {
+  document.getElementById('statsModal').classList.remove('active');
+}
+
 const STORAGE_KEYS = {
   usage: 'recitation_usage_count',
   chars: 'recitation_total_input_chars',

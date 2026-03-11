@@ -1,0 +1,11 @@
+name = "recitation-tool"
+main = "worker/index.js"
+compatibility_date = "2024-01-01"
+
+[site]
+bucket = "./"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "recitation-stats"
+database_id = "placeholder-will-be-replaced"
