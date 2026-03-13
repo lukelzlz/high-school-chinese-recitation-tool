@@ -1,4 +1,4 @@
-name = "recitation-tool"
+name = "high-school-chinese-recitation-tool"
 main = "worker/index.js"
 compatibility_date = "2024-01-01"
 
