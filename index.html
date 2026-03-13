@@ -43,10 +43,20 @@
         <button id="hintBtn" class="btn btn-secondary">提示</button>
         <button id="restartBtn" class="btn btn-warning" disabled>重新开始</button>
         <button id="resetStatsBtn" class="btn btn-danger">重置统计</button>
+        <button id="statsBtn" class="btn btn-info">📊 排行榜</button>
       </div>
 
       <div class="result-display" id="resultDisplay"></div>
     </main>
+
+    <!-- 统计弹窗 -->
+    <div id="statsModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" id="closeStatsModal">&times;</span>
+        <h2>🏆 背诵排行榜</h2>
+        <div id="statsContent"></div>
+      </div>
+    </div>
 
     <footer>
       <p>纯前端应用 | 数据存储在本地 | <a href="https://github.com/lukelzlz/high-school-chinese-recitation-tool" target="_blank">GitHub</a></p>

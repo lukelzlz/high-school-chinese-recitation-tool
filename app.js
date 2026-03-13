@@ -5,6 +5,7 @@ const submitBtn = document.getElementById('submitBtn');
 const hintBtn = document.getElementById('hintBtn');
 const restartBtn = document.getElementById('restartBtn');
 const resetStatsBtn = document.getElementById('resetStatsBtn');
+const statsBtn = document.getElementById('statsBtn');
 const progressText = document.getElementById('progressText');
 const progressFill = document.getElementById('progressFill');
 const hintDisplay = document.getElementById('hintDisplay');
@@ -323,7 +324,24 @@ function init() {
   submitBtn.addEventListener('click', onSubmit);
   hintBtn.addEventListener('click', onHint);
   restartBtn.addEventListener('click', onRestart);
-  resetStatsBtn.addEventListener('click', resetStats);
+    resetStatsBtn.addEventListener('click', resetStats);
+  statsBtn.addEventListener('click', showStatsModal);
+
+  // 关闭统计弹窗
+  const closeStatsModal = document.getElementById('closeStatsModal');
+  const statsModal = document.getElementById('statsModal');
+  if (closeStatsModal) {
+    closeStatsModal.addEventListener('click', () => {
+      statsModal.classList.remove('active');
+    });
+  }
+  if (statsModal) {
+    statsModal.addEventListener('click', (e) => {
+      if (e.target === statsModal) {
+        statsModal.classList.remove('active');
+      }
+    });
+  }
   inputField.addEventListener('keydown', e => {
     if (e.key === 'Enter') onSubmit();
   });
