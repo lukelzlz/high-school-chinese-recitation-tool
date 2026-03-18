@@ -201,6 +201,9 @@ function showCurrentSentence() {
     restartBtn.disabled = false;
     const rate = ((correctCount / sentenceList.length) * 100).toFixed(1);
     showResult(`背诵完成<br>总句数：${sentenceList.length}<br>正确数：${correctCount}<br>正确率：${rate}%`, 'success');
+    
+    // 上报背诵结果到云端
+    reportStats(currentKey, correctCount, sentenceList.length);
   }
 }
 
