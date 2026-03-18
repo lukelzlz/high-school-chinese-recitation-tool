@@ -128,8 +128,10 @@ function normalizeText(text) {
 function loadStats() {
   const usage = Number(localStorage.getItem(STORAGE_KEYS.usage) || 0);
   const chars = Number(localStorage.getItem(STORAGE_KEYS.chars) || 0);
+  const total = Object.keys(TEXTS_LIBRARY).length;
   statUsage.textContent = `使用次数: ${usage}`;
   statChars.textContent = `输入字数: ${chars}`;
+  document.getElementById('statTotal').textContent = `篇目: ${total}`;
 }
 
 function addUsage() {
@@ -347,6 +349,8 @@ function init() {
   }
   inputField.addEventListener('keydown', e => {
     if (e.key === 'Enter') onSubmit();
+    if (e.ctrlKey && e.key === 'h') { e.preventDefault(); onHint(); }
+    if (e.ctrlKey && e.key === 'r') { e.preventDefault(); onRestart(); }
   });
 }
 
