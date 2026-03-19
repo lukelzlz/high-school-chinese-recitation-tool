@@ -11,6 +11,24 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+// 初始化数据库表
+async function ensureTableExists(db) {
+  await db.batch([
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS recitation_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        text_key TEXT NOT NULL,
+        correct_count INTEGER NOT NULL,
+        total_count INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_user_id ON recitation_events(user_id)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_text_key ON recitation_events(text_key)`),
+  ]);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -24,6 +42,9 @@ export default {
     // POST /api/stats - 记录背诵事件
     if (pathname === '/api/stats' && request.method === 'POST') {
       try {
+        // 确保表存在
+        await ensureTableExists(env.btw);
+
         const body = await request.json();
         const { text_key, correct_count, total_count, user_id } = body;
 
@@ -46,6 +67,9 @@ export default {
     // GET /api/stats/me?uid=xxx - 个人统计
     if (pathname === '/api/stats/me' && request.method === 'GET') {
       try {
+        // 确保表存在
+        await ensureTableExists(env.btw);
+
         const uid = url.searchParams.get('uid');
         if (!uid) {
           return jsonResponse({ error: '缺少 uid 参数' }, 400);
@@ -77,6 +101,9 @@ export default {
     // GET /api/stats - 全站统计
     if (pathname === '/api/stats' && request.method === 'GET') {
       try {
+        // 确保表存在
+        await ensureTableExists(env.btw);
+
         const totalResult = await env.btw.prepare(
           'SELECT COUNT(*) as total_times, COUNT(DISTINCT user_id) as total_users FROM recitation_events'
         ).first();
