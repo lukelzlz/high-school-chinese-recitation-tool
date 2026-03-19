@@ -1,3 +1,5 @@
+import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -12,7 +14,7 @@ function jsonResponse(data, status = 200) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
 
@@ -95,12 +97,24 @@ export default {
       }
     }
 
-    // 非 API 路由返回 404（静态文件由 [site] 处理）
+    // 非 API 路由返回 404
     if (pathname.startsWith('/api/')) {
       return jsonResponse({ error: 'Not Found' }, 404);
     }
 
-    // 非 API 请求交给 site 处理
-    return env.ASSETS.fetch(request);
+    // 非 API 请求交给静态资源处理
+    try {
+      return await getAssetFromKV(
+        {
+          request,
+          waitUntil: ctx.waitUntil.bind(ctx),
+        },
+        {
+          ASSET_NAMESPACE: env.__STATIC_CONTENT,
+        }
+      );
+    } catch (e) {
+      return new Response('Not Found', { status: 404 });
+    }
   },
 };
