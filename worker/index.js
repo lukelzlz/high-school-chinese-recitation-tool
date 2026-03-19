@@ -104,9 +104,17 @@ export default {
 
     // 非 API 请求交给静态资源处理
     try {
+      // 处理根路径
+      let assetPath = pathname;
+      if (pathname === '/' || pathname === '') {
+        assetPath = '/index.html';
+      }
+
+      const assetRequest = new Request(new URL(assetPath, url.origin));
+
       return await getAssetFromKV(
         {
-          request,
+          request: assetRequest,
           waitUntil: ctx.waitUntil.bind(ctx),
         },
         {
@@ -114,7 +122,21 @@ export default {
         }
       );
     } catch (e) {
-      return new Response('Not Found', { status: 404 });
+      // 如果找不到资源，尝试返回 index.html（用于 SPA）
+      try {
+        const indexRequest = new Request(new URL('/index.html', url.origin));
+        return await getAssetFromKV(
+          {
+            request: indexRequest,
+            waitUntil: ctx.waitUntil.bind(ctx),
+          },
+          {
+            ASSET_NAMESPACE: env.__STATIC_CONTENT,
+          }
+        );
+      } catch (e2) {
+        return new Response('Not Found: ' + pathname, { status: 404 });
+      }
     }
   },
 };
