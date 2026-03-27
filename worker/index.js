@@ -57,40 +57,26 @@ export default {
           return jsonResponse({ error: '识别服务未配置' }, 503);
         }
 
-        const model = '@cf/meta/llama-3.2-11b-vision-instruct';
+        const model = '@cf/google/gemma-3-12b-it';
 
-        async function recognize() {
-          return await env.AI.run(model, {
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: '你是一个OCR识别工具。请识别图片中手写的中文文字。规则：1.只输出识别到的文字本身，不要任何解释、描述、翻译或注释。2.不要输出英文。3.不要输出标点符号和空格。4.如果图片中没有文字，只输出一个空字符串。5.直接输出原始文字，不要加引号。',
-                  },
-                  {
-                    type: 'image_url',
-                    image_url: { url: image },
-                  },
-                ],
-              },
-            ],
-            max_tokens: 100,
-          });
-        }
-
-        let response;
-        try {
-          response = await recognize();
-        } catch (err) {
-          if (err.message && err.message.includes('5016')) {
-            await env.AI.run(model, { prompt: 'agree' });
-            response = await recognize();
-          } else {
-            throw err;
-          }
-        }
+        const response = await env.AI.run(model, {
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: '你是一个OCR识别工具。请识别图片中手写的中文文字。规则：1.只输出识别到的文字本身，不要任何解释、描述、翻译或注释。2.不要输出英文。3.不要输出标点符号和空格。4.如果图片中没有文字，只输出一个空字符串。5.直接输出原始文字，不要加引号。',
+                },
+                {
+                  type: 'image_url',
+                  image_url: { url: image },
+                },
+              ],
+            },
+          ],
+          max_tokens: 100,
+        });
 
         const text = response?.response?.trim() || '';
         return jsonResponse({ text });
