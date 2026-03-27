@@ -53,33 +53,38 @@ export default {
           return jsonResponse({ error: '图片过大，请减少书写内容' }, 400);
         }
 
-        if (!env.AI) {
-          return jsonResponse({ error: '识别服务未配置' }, 503);
-        }
+        const prompt = '你是一个OCR识别工具。请识别图片中手写的中文文字。规则：1.只输出识别到的文字本身，不要任何解释、描述、翻译或注释。2.不要输出英文。3.不要输出标点符号和空格。4.如果图片中没有文字，只输出一个空字符串。5.直接输出原始文字，不要加引号。';
 
-        const model = '@cf/moonshotai/kimi-k2.5';
-
-        const rawResponse = await env.AI.run(model, {
-          messages: [
-            {
-              role: 'user',
-              content: [
+        // 使用 Hugging Face 免费推理 API（Qwen2.5-VL）
+        const hfResponse = await fetch(
+          'https://api-inference.huggingface.co/models/Qwen/Qwen2.5-VL-7B-Instruct/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'Qwen/Qwen2.5-VL-7B-Instruct',
+              messages: [
                 {
-                  type: 'text',
-                  text: '你是一个OCR识别工具。请识别图片中手写的中文文字。规则：1.只输出识别到的文字本身，不要任何解释、描述、翻译或注释。2.不要输出英文。3.不要输出标点符号和空格。4.如果图片中没有文字，只输出一个空字符串。5.直接输出原始文字，不要加引号。',
-                },
-                {
-                  type: 'image_url',
-                  image_url: { url: image },
+                  role: 'user',
+                  content: [
+                    { type: 'image_url', image_url: { url: image } },
+                    { type: 'text', text: prompt },
+                  ],
                 },
               ],
-            },
-          ],
-          max_tokens: 100,
-        });
+              max_tokens: 100,
+            }),
+          }
+        );
 
-        console.log('Raw AI response:', JSON.stringify(rawResponse));
-        const text = rawResponse?.response?.trim() || '';
+        if (!hfResponse.ok) {
+          const errText = await hfResponse.text();
+          console.error('HF API error:', hfResponse.status, errText);
+          return jsonResponse({ error: '识别服务暂不可用: ' + hfResponse.status }, 503);
+        }
+
+        const hfData = await hfResponse.json();
+        const text = hfData?.choices?.[0]?.message?.content?.trim() || '';
         return jsonResponse({ text });
       } catch (err) {
         console.error('Recognition error:', err);
