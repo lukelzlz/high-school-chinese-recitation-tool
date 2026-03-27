@@ -9,6 +9,11 @@ binding = "ASSETS"
 [ai]
 binding = "AI"
 
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 [[d1_databases]]
 binding = "btw"
 database_name = "recitation-stats"
