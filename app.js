@@ -17,6 +17,13 @@ const statChars = document.getElementById('statChars');
 const selectSentencesBtn = document.getElementById('selectSentencesBtn');
 const sentencePickerModal = document.getElementById('sentencePickerModal');
 const sentencePickerContent = document.getElementById('sentencePickerContent');
+const toggleHandwritingBtn = document.getElementById('toggleHandwritingBtn');
+const handwritingSection = document.getElementById('handwritingSection');
+const handwritingCanvas = document.getElementById('handwritingCanvas');
+const undoStrokeBtn = document.getElementById('undoStrokeBtn');
+const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+const recognizeBtn = document.getElementById('recognizeBtn');
+const handwritingStatus = document.getElementById('handwritingStatus');
 
 let filteredKeys = [];
 let currentKey = '';
@@ -26,6 +33,11 @@ let tryCount = 0;
 let correctCount = 0; // 第一次尝试就答对的句子数
 let hintCooldown = false;
 let selectedIndices = null; // null = 全文模式，数组 = 选中的句子索引
+let handwritingMode = false;
+let isDrawing = false;
+let strokes = [];
+let currentStroke = [];
+let isRecognizing = false;
 
 // === 统计上报相关 ===
 function simpleHash(str) {
@@ -113,6 +125,158 @@ const STORAGE_KEYS = {
   chars: 'recitation_total_input_chars',
   recent: 'recitation_recent_text'
 };
+
+// === 手写输入相关 ===
+
+function getCanvasCoords(e) {
+  const rect = handwritingCanvas.getBoundingClientRect();
+  const scaleX = handwritingCanvas.width / rect.width;
+  const scaleY = handwritingCanvas.height / rect.height;
+  if (e.touches && e.touches.length > 0) {
+    return {
+      x: (e.touches[0].clientX - rect.left) * scaleX,
+      y: (e.touches[0].clientY - rect.top) * scaleY,
+    };
+  }
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY,
+  };
+}
+
+function redrawCanvas() {
+  const ctx = handwritingCanvas.getContext('2d');
+  ctx.clearRect(0, 0, handwritingCanvas.width, handwritingCanvas.height);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const stroke of strokes) {
+    if (stroke.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0].x, stroke[0].y);
+    for (let i = 1; i < stroke.length; i++) {
+      ctx.lineTo(stroke[i].x, stroke[i].y);
+    }
+    ctx.stroke();
+  }
+  if (currentStroke.length >= 2) {
+    ctx.beginPath();
+    ctx.moveTo(currentStroke[0].x, currentStroke[0].y);
+    for (let i = 1; i < currentStroke.length; i++) {
+      ctx.lineTo(currentStroke[i].x, currentStroke[i].y);
+    }
+    ctx.stroke();
+  }
+}
+
+function startDrawing(e) {
+  if (isRecognizing) return;
+  e.preventDefault();
+  isDrawing = true;
+  currentStroke = [getCanvasCoords(e)];
+}
+
+function draw(e) {
+  if (!isDrawing || isRecognizing) return;
+  e.preventDefault();
+  currentStroke.push(getCanvasCoords(e));
+  redrawCanvas();
+}
+
+function stopDrawing(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  isDrawing = false;
+  if (currentStroke.length > 0) {
+    strokes.push([...currentStroke]);
+    currentStroke = [];
+  }
+}
+
+function undoStroke() {
+  if (strokes.length > 0) {
+    strokes.pop();
+    redrawCanvas();
+  }
+}
+
+function clearCanvas() {
+  strokes = [];
+  currentStroke = [];
+  isDrawing = false;
+  redrawCanvas();
+  handwritingStatus.textContent = '';
+}
+
+function toggleHandwriting() {
+  handwritingMode = !handwritingMode;
+  if (handwritingMode) {
+    handwritingSection.style.display = 'block';
+    handwritingSection.classList.add('active');
+    toggleHandwritingBtn.textContent = '键盘模式';
+    toggleHandwritingBtn.classList.remove('btn-secondary');
+    toggleHandwritingBtn.classList.add('btn-primary');
+  } else {
+    handwritingSection.style.display = 'none';
+    handwritingSection.classList.remove('active');
+    toggleHandwritingBtn.textContent = '手写模式';
+    toggleHandwritingBtn.classList.remove('btn-primary');
+    toggleHandwritingBtn.classList.add('btn-secondary');
+    clearCanvas();
+    inputField.focus();
+  }
+}
+
+async function recognizeHandwriting() {
+  if (isRecognizing) return;
+  if (strokes.length === 0) {
+    handwritingStatus.textContent = '请先在画布上书写文字';
+    return;
+  }
+
+  isRecognizing = true;
+  recognizeBtn.disabled = true;
+  recognizeBtn.textContent = '识别中...';
+  handwritingSection.classList.add('recognizing');
+  handwritingStatus.textContent = '正在识别...';
+
+  try {
+    const dataUrl = handwritingCanvas.toDataURL('image/png');
+    const response = await fetch('/api/recognize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl }),
+    });
+
+    if (!response.ok) throw new Error('识别服务暂不可用');
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+
+    if (data.text && data.text.trim()) {
+      inputField.value += data.text.trim();
+      clearCanvas();
+      handwritingStatus.textContent = '识别结果已添加到输入框';
+      setTimeout(() => {
+        if (handwritingStatus.textContent === '识别结果已添加到输入框') {
+          handwritingStatus.textContent = '';
+        }
+      }, 2000);
+    } else {
+      handwritingStatus.textContent = '未能识别文字，请重试';
+    }
+  } catch (err) {
+    handwritingStatus.textContent = err.message || '识别失败，请检查网络连接';
+    handwritingStatus.style.color = '#e74c3c';
+    setTimeout(() => { handwritingStatus.style.color = '#999'; }, 3000);
+  } finally {
+    isRecognizing = false;
+    recognizeBtn.disabled = false;
+    recognizeBtn.textContent = '识别';
+    handwritingSection.classList.remove('recognizing');
+  }
+}
 
 function splitTextToSentences(text) {
   if (!text) return [];
@@ -258,6 +422,8 @@ function showCurrentSentence() {
     hintBtn.disabled = true;
     restartBtn.disabled = false;
     selectSentencesBtn.disabled = true;
+    toggleHandwritingBtn.disabled = true;
+    if (handwritingMode) toggleHandwriting();
     const rate = ((correctCount / practiceList.length) * 100).toFixed(1);
     if (selectedIndices !== null) {
       showResult(`练习完成（已选 ${practiceList.length} 句）<br>一次通过：${correctCount}<br>一次通过率：${rate}%`, 'success');
@@ -283,6 +449,7 @@ function selectText(key) {
   hintBtn.disabled = false;
   restartBtn.disabled = true;
   selectSentencesBtn.disabled = false;
+  toggleHandwritingBtn.disabled = false;
   showResult(`已加载：${key}`);
   showCurrentSentence();
   addUsage();
@@ -502,6 +669,20 @@ function init() {
     resetStatsBtn.addEventListener('click', resetStats);
   statsBtn.addEventListener('click', showStatsModal);
   selectSentencesBtn.addEventListener('click', showSentencePicker);
+
+  // 手写输入事件
+  toggleHandwritingBtn.addEventListener('click', toggleHandwriting);
+  handwritingCanvas.addEventListener('mousedown', startDrawing);
+  handwritingCanvas.addEventListener('mousemove', draw);
+  handwritingCanvas.addEventListener('mouseup', stopDrawing);
+  handwritingCanvas.addEventListener('mouseleave', stopDrawing);
+  handwritingCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+  handwritingCanvas.addEventListener('touchmove', draw, { passive: false });
+  handwritingCanvas.addEventListener('touchend', stopDrawing, { passive: false });
+  handwritingCanvas.addEventListener('touchcancel', stopDrawing, { passive: false });
+  undoStrokeBtn.addEventListener('click', undoStroke);
+  clearCanvasBtn.addEventListener('click', clearCanvas);
+  recognizeBtn.addEventListener('click', recognizeHandwriting);
 
   // 句子选择弹窗事件
   document.getElementById('pickerSelectAll').addEventListener('click', pickerSelectAll);

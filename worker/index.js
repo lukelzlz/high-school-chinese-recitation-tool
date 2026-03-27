@@ -39,6 +39,54 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
+    // POST /api/recognize - 手写文字识别
+    if (pathname === '/api/recognize' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { image } = body;
+
+        if (!image || !image.startsWith('data:image/')) {
+          return jsonResponse({ error: '无效的图片数据' }, 400);
+        }
+
+        if (image.length > 2 * 1024 * 1024) {
+          return jsonResponse({ error: '图片过大，请减少书写内容' }, 400);
+        }
+
+        if (!env.AI) {
+          return jsonResponse({ error: '识别服务未配置' }, 503);
+        }
+
+        const response = await env.AI.run(
+          '@cf/meta/llama-3.2-11b-vision-instruct',
+          {
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: '请识别图片中的中文文字。只输出识别到的文字内容，不要输出任何标点符号、空格、说明或格式。如果图片中没有文字，只输出一个空字符串。',
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: { url: image },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 100,
+          }
+        );
+
+        const text = response?.response?.trim() || '';
+        return jsonResponse({ text });
+      } catch (err) {
+        console.error('Recognition error:', err);
+        return jsonResponse({ error: '识别服务出错' }, 500);
+      }
+    }
+
     // POST /api/stats - 记录背诵事件
     if (pathname === '/api/stats' && request.method === 'POST') {
       try {

@@ -534,3 +534,79 @@ footer .shortcuts {
   flex: 1;
   word-break: break-all;
 }
+
+/* 手写输入区域 */
+.handwriting-section {
+  margin: 16px 0;
+  padding: 16px;
+  background: #fafafa;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  animation: slideIn 0.2s ease-out;
+}
+
+.handwriting-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.handwriting-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.handwriting-toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+#handwritingCanvas {
+  width: 100%;
+  height: 200px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  cursor: crosshair;
+  touch-action: none;
+  display: block;
+}
+
+.handwriting-status {
+  font-size: 13px;
+  color: #999;
+  margin-top: 6px;
+  min-height: 20px;
+  text-align: center;
+}
+
+.handwriting-section.active #handwritingCanvas {
+  border-color: #667eea;
+}
+
+.handwriting-section.recognizing #handwritingCanvas {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .handwriting-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .handwriting-toolbar {
+    justify-content: center;
+  }
+
+  #handwritingCanvas {
+    height: 160px;
+  }
+
+  .handwriting-section {
+    padding: 12px;
+  }
+}

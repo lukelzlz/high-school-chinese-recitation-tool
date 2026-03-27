@@ -6,6 +6,9 @@ compatibility_date = "2024-01-01"
 directory = "./"
 binding = "ASSETS"
 
+[ai]
+binding = "AI"
+
 [[d1_databases]]
 binding = "btw"
 database_name = "recitation-stats"
