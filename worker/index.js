@@ -59,7 +59,7 @@ export default {
 
         const model = '@cf/moonshotai/kimi-k2.5';
 
-        const response = await env.AI.run(model, {
+        const rawResponse = await env.AI.run(model, {
           messages: [
             {
               role: 'user',
@@ -78,7 +78,8 @@ export default {
           max_tokens: 100,
         });
 
-        const text = response?.response?.trim() || '';
+        console.log('Raw AI response:', JSON.stringify(rawResponse));
+        const text = rawResponse?.response?.trim() || '';
         return jsonResponse({ text });
       } catch (err) {
         console.error('Recognition error:', err);
