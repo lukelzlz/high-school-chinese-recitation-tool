@@ -9,12 +9,13 @@
 - 错字高亮对比
 - 随机提示字
 - 正确率统计
+- 手写输入（Canvas 画板 + Workers AI 识别）
 - 本地记录：
   - 使用次数
   - 总输入字数
   - 最近使用篇目
 - 移动端友好
-- 无需后端，默认离线可用
+- 无需后端，默认离线可用（手写识别需网络）
 
 ## 技术路线
 
@@ -37,11 +38,17 @@
 
 ```text
 .
-├── index.html
-├── styles.css
-├── app.js
-└── data/
-    └── texts.js
+├── public/
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   └── data/
+│       └── texts.js
+├── worker/
+│   └── index.js
+├── wrangler.toml
+├── wrangler.jsonc
+└── schema.sql
 ```
 
 ## 部署
@@ -64,6 +71,18 @@
 ### Cloudflare Workers Static Assets
 
 如果要走 Workers，也可以把这些文件作为静态资源直接托管。
+
+推荐使用 `wrangler.jsonc` 配置，静态文件放在 `public/` 目录，Worker 代码放在 `worker/` 目录：
+
+- `assets.directory` 指向 `./public/`
+- `main` 指向 `worker/index.js`
+- `run_worker_first = true` 确保 API 路由由 Worker 处理
+
+支持的后端功能：
+- `POST /api/stats` — 记录背诵统计
+- `GET /api/stats` — 全站统计
+- `GET /api/stats/me?uid=xxx` — 个人统计
+- `POST /api/recognize` — 手写文字识别（Workers AI 多模态模型）
 
 ## 为什么默认不用 Workers 记统计
 
