@@ -1,11 +1,12 @@
 name = "high-school-chinese-recitation-tool"
 main = "worker/index.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"
 
 [assets]
 directory = "./"
 binding = "ASSETS"
 run_worker_first = true
+exclude = [".git/**", ".github/**", ".claude/**", "worker/**", "node_modules/**", ".omc/**"]
 
 [ai]
 binding = "AI"
