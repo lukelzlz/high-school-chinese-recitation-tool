@@ -35,9 +35,11 @@ let hintCooldown = false;
 let selectedIndices = null; // null = 全文模式，数组 = 选中的句子索引
 let handwritingMode = false;
 let isDrawing = false;
-let strokes = [];
+let strokes = [];         // [{x, y, t}, ...] 每个元素是一个笔画
 let currentStroke = [];
+let currentStrokeStartTime = 0;
 let isRecognizing = false;
+let browserRecognizer = null; // 浏览器 Handwriting Recognition API
 
 // === 统计上报相关 ===
 function simpleHash(str) {
@@ -132,16 +134,23 @@ function getCanvasCoords(e) {
   const rect = handwritingCanvas.getBoundingClientRect();
   const scaleX = handwritingCanvas.width / rect.width;
   const scaleY = handwritingCanvas.height / rect.height;
+  let clientX, clientY;
   if (e.touches && e.touches.length > 0) {
-    return {
-      x: (e.touches[0].clientX - rect.left) * scaleX,
-      y: (e.touches[0].clientY - rect.top) * scaleY,
-    };
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
   }
   return {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY,
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY,
   };
+}
+
+function getCanvasCoordsWithTime(e) {
+  const { x, y } = getCanvasCoords(e);
+  return { x, y, t: Date.now() - currentStrokeStartTime };
 }
 
 function redrawCanvas() {
@@ -174,13 +183,15 @@ function startDrawing(e) {
   if (isRecognizing) return;
   e.preventDefault();
   isDrawing = true;
-  currentStroke = [getCanvasCoords(e)];
+  currentStrokeStartTime = Date.now();
+  const { x, y } = getCanvasCoords(e);
+  currentStroke = [{ x, y, t: 0 }];
 }
 
 function draw(e) {
   if (!isDrawing || isRecognizing) return;
   e.preventDefault();
-  currentStroke.push(getCanvasCoords(e));
+  currentStroke.push(getCanvasCoordsWithTime(e));
   redrawCanvas();
 }
 
@@ -228,6 +239,42 @@ function toggleHandwriting() {
   }
 }
 
+async function recognizeWithBrowserAPI() {
+  if (!('createHandwritingRecognizer' in navigator)) return null;
+
+  try {
+    if (!browserRecognizer) {
+      browserRecognizer = await navigator.createHandwritingRecognizer({ languages: ['zh'] });
+    }
+    const drawing = browserRecognizer.startDrawing({ recognitionType: 'text' });
+    for (const stroke of strokes) {
+      const hwStroke = new HandwritingStroke();
+      for (const point of stroke) {
+        hwStroke.addPoint({ x: point.x, y: point.y, t: point.t });
+      }
+      drawing.addStroke(hwStroke);
+    }
+    const [prediction] = await drawing.getPrediction();
+    return prediction?.text?.trim() || null;
+  } catch (e) {
+    console.warn('浏览器手写识别失败，将使用服务器识别:', e.message);
+    return null;
+  }
+}
+
+async function recognizeWithServer() {
+  const dataUrl = handwritingCanvas.toDataURL('image/png');
+  const response = await fetch('/api/recognize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: dataUrl }),
+  });
+  if (!response.ok) throw new Error('识别服务暂不可用');
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return data.text?.trim() || '';
+}
+
 async function recognizeHandwriting() {
   if (isRecognizing) return;
   if (strokes.length === 0) {
@@ -242,21 +289,14 @@ async function recognizeHandwriting() {
   handwritingStatus.textContent = '正在识别...';
 
   try {
-    const dataUrl = handwritingCanvas.toDataURL('image/png');
-    const response = await fetch('/api/recognize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: dataUrl }),
-    });
+    let text = await recognizeWithBrowserAPI();
+    if (!text) {
+      handwritingStatus.textContent = '正在使用服务器识别...';
+      text = await recognizeWithServer();
+    }
 
-    if (!response.ok) throw new Error('识别服务暂不可用');
-
-    const data = await response.json();
-    console.log('识别结果:', JSON.stringify(data));
-    if (data.error) throw new Error(data.error);
-
-    if (data.text && data.text.trim()) {
-      inputField.value += data.text.trim();
+    if (text) {
+      inputField.value += text;
       clearCanvas();
       handwritingStatus.textContent = '识别结果已添加到输入框';
       setTimeout(() => {
@@ -268,7 +308,7 @@ async function recognizeHandwriting() {
       handwritingStatus.textContent = '未能识别文字，请重试';
     }
   } catch (err) {
-    handwritingStatus.textContent = '识别服务出错: ' + (data.error || err.message || '未知错误');
+    handwritingStatus.textContent = '识别服务出错: ' + (err.message || '未知错误');
     handwritingStatus.style.color = '#e74c3c';
     setTimeout(() => { handwritingStatus.style.color = '#999'; }, 3000);
   } finally {
