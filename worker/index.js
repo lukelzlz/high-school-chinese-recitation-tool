@@ -82,7 +82,7 @@ export default {
         return jsonResponse({ text });
       } catch (err) {
         console.error('Recognition error:', err);
-        return jsonResponse({ error: '识别服务出错' }, 500);
+        return jsonResponse({ error: '识别服务出错: ' + (err.message || err) }, 500);
       }
     }
 

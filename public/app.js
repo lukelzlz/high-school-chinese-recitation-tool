@@ -267,7 +267,7 @@ async function recognizeHandwriting() {
       handwritingStatus.textContent = '未能识别文字，请重试';
     }
   } catch (err) {
-    handwritingStatus.textContent = err.message || '识别失败，请检查网络连接';
+    handwritingStatus.textContent = '识别服务出错: ' + (data.error || err.message || '未知错误');
     handwritingStatus.style.color = '#e74c3c';
     setTimeout(() => { handwritingStatus.style.color = '#999'; }, 3000);
   } finally {
