@@ -23,7 +23,7 @@ let currentKey = '';
 let sentenceList = [];
 let currentIndex = 0;
 let tryCount = 0;
-let correctCount = 0;
+let correctCount = 0; // 第一次尝试就答对的句子数
 let hintCooldown = false;
 let selectedIndices = null; // null = 全文模式，数组 = 选中的句子索引
 
@@ -91,7 +91,7 @@ function showStatsModal() {
     if (data.top_texts && data.top_texts.length > 0) {
       html += '<h3 style="margin:16px 0 10px;font-size:16px;">🔥 最热门篇目 Top10</h3>';
       html += '<div class="stats-table">';
-      html += '<div class="stats-row stats-header"><span class="stats-rank">#</span><span class="stats-name">篇目</span><span class="stats-count">次数</span><span class="stats-rate">平均正确率</span></div>';
+      html += '<div class="stats-row stats-header"><span class="stats-rank">#</span><span class="stats-name">篇目</span><span class="stats-count">次数</span><span class="stats-rate">平均一次通过率</span></div>';
       data.top_texts.forEach((item, i) => {
         const rate = item.avg_rate != null ? item.avg_rate.toFixed(1) + '%' : '-';
         html += `<div class="stats-row"><span class="stats-rank">${i + 1}</span><span class="stats-name">${item.text_key}</span><span class="stats-count">${item.times}</span><span class="stats-rate">${rate}</span></div>`;
@@ -191,9 +191,9 @@ function updateProgress() {
   if (currentIndex >= practiceList.length && practiceList.length > 0) {
     const rate = ((correctCount / practiceList.length) * 100).toFixed(1);
     if (selectedIndices !== null) {
-      progressText.textContent = `练习完成（已选 ${practiceList.length} 句）| 正确率：${rate}% | 正确句数：${correctCount}/${practiceList.length}`;
+      progressText.textContent = `练习完成（已选 ${practiceList.length} 句）| 一次通过率：${rate}% | 一次通过：${correctCount}/${practiceList.length}`;
     } else {
-      progressText.textContent = `全文完成 | 正确率：${rate}% | 正确句数：${correctCount}/${practiceList.length}`;
+      progressText.textContent = `全文完成 | 一次通过率：${rate}% | 一次通过：${correctCount}/${practiceList.length}`;
     }
   } else {
     if (selectedIndices !== null) {
@@ -217,13 +217,14 @@ function showContext() {
   }
 
   const currentOriginalIndex = selectedIndices[currentIndex];
+  const doneSet = new Set(selectedIndices.slice(0, currentIndex)); // 已真正背完的句子
   const selectedSet = new Set(selectedIndices);
   let html = '';
 
   sentenceList.forEach((sentence, i) => {
     if (i === currentOriginalIndex) {
       html += `<span class="ctx-current">（第 ${i + 1} 句 · 当前）</span>`;
-    } else if (i < currentOriginalIndex && selectedSet.has(i)) {
+    } else if (doneSet.has(i)) {
       // 已背完的选中句子：显示原文
       html += `<span class="ctx-done">${sentence}</span>`;
     } else if (!selectedSet.has(i)) {
@@ -259,9 +260,9 @@ function showCurrentSentence() {
     selectSentencesBtn.disabled = true;
     const rate = ((correctCount / practiceList.length) * 100).toFixed(1);
     if (selectedIndices !== null) {
-      showResult(`练习完成（已选 ${practiceList.length} 句）<br>正确数：${correctCount}<br>正确率：${rate}%`, 'success');
+      showResult(`练习完成（已选 ${practiceList.length} 句）<br>一次通过：${correctCount}<br>一次通过率：${rate}%`, 'success');
     } else {
-      showResult(`背诵完成<br>总句数：${practiceList.length}<br>正确数：${correctCount}<br>正确率：${rate}%`, 'success');
+      showResult(`背诵完成<br>总句数：${practiceList.length}<br>一次通过：${correctCount}<br>一次通过率：${rate}%`, 'success');
     }
 
     // 上报背诵结果到云端
@@ -312,7 +313,7 @@ function onSubmit() {
   const correctClean = normalizeText(correctText);
 
   if (userClean === correctClean) {
-    correctCount += 1;
+    if (tryCount === 1) correctCount += 1;
     currentIndex += 1;
     showResult(`正确，进入下一句（本句尝试 ${tryCount} 次）`, 'success');
     showCurrentSentence();
