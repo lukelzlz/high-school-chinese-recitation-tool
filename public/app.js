@@ -252,6 +252,7 @@ async function recognizeHandwriting() {
     if (!response.ok) throw new Error('识别服务暂不可用');
 
     const data = await response.json();
+    console.log('识别结果:', JSON.stringify(data));
     if (data.error) throw new Error(data.error);
 
     if (data.text && data.text.trim()) {
