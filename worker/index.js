@@ -55,36 +55,46 @@ export default {
 
         const prompt = '你是一个OCR识别工具。请识别图片中手写的中文文字。规则：1.只输出识别到的文字本身，不要任何解释、描述、翻译或注释。2.不要输出英文。3.不要输出标点符号和空格。4.如果图片中没有文字，只输出一个空字符串。5.直接输出原始文字，不要加引号。';
 
-        // 使用 Hugging Face 免费推理 API（Qwen2.5-VL）
-        const hfResponse = await fetch(
-          'https://api-inference.huggingface.co/models/Qwen/Qwen2.5-VL-7B-Instruct/v1/chat/completions',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: 'Qwen/Qwen2.5-VL-7B-Instruct',
+        if (!env.AI) {
+          return jsonResponse({ error: '识别服务未配置' }, 503);
+        }
+
+        // 提取 base64 图片数据
+        const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (!base64Match) {
+          return jsonResponse({ error: '无效的图片格式' }, 400);
+        }
+        const mediaType = base64Match[1] === 'jpg' ? 'jpeg' : base64Match[1];
+        const base64Data = base64Match[2];
+
+        // 优先使用 Llama 4 Scout（多模态），回退到 Llama 3.2 Vision
+        const models = [
+          '@cf/meta/llama-4-scout-17b-16e-instruct',
+          '@cf/meta/llama-3.2-11b-vision-instruct',
+        ];
+
+        let text = '';
+        for (const model of models) {
+          try {
+            const aiResponse = await env.AI.run(model, {
               messages: [
                 {
                   role: 'user',
                   content: [
-                    { type: 'image_url', image_url: { url: image } },
+                    { type: 'image_url', image_url: { url: `data:image/${mediaType};base64,${base64Data}` } },
                     { type: 'text', text: prompt },
                   ],
                 },
               ],
-              max_tokens: 100,
-            }),
+              max_tokens: 200,
+            });
+            text = (aiResponse?.response || aiResponse?.choices?.[0]?.message?.content || '').trim();
+            if (text) break;
+          } catch (e) {
+            console.warn(`Model ${model} failed:`, e.message);
           }
-        );
-
-        if (!hfResponse.ok) {
-          const errText = await hfResponse.text();
-          console.error('HF API error:', hfResponse.status, errText);
-          return jsonResponse({ error: '识别服务暂不可用: ' + hfResponse.status }, 503);
         }
 
-        const hfData = await hfResponse.json();
-        const text = hfData?.choices?.[0]?.message?.content?.trim() || '';
         return jsonResponse({ text });
       } catch (err) {
         console.error('Recognition error:', err);

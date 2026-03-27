@@ -286,7 +286,9 @@ async function recognizeHandwriting() {
   recognizeBtn.disabled = true;
   recognizeBtn.textContent = '识别中...';
   handwritingSection.classList.add('recognizing');
-  handwritingStatus.textContent = '正在识别...';
+
+  const hasBrowserAPI = 'createHandwritingRecognizer' in navigator;
+  handwritingStatus.textContent = hasBrowserAPI ? '正在识别...' : '正在使用服务器识别...';
 
   try {
     let text = await recognizeWithBrowserAPI();
@@ -308,7 +310,11 @@ async function recognizeHandwriting() {
       handwritingStatus.textContent = '未能识别文字，请重试';
     }
   } catch (err) {
-    handwritingStatus.textContent = '识别服务出错: ' + (err.message || '未知错误');
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      handwritingStatus.textContent = '网络不可用，请使用支持手写识别的浏览器（Chrome/Edge）';
+    } else {
+      handwritingStatus.textContent = '识别出错: ' + (err.message || '未知错误');
+    }
     handwritingStatus.style.color = '#e74c3c';
     setTimeout(() => { handwritingStatus.style.color = '#999'; }, 3000);
   } finally {
