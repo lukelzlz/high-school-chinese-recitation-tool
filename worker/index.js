@@ -57,7 +57,7 @@ export default {
           return jsonResponse({ error: '识别服务未配置' }, 503);
         }
 
-        const model = '@cf/google/gemma-3-12b-it';
+        const model = '@cf/moonshotai/kimi-k2.5';
 
         const response = await env.AI.run(model, {
           messages: [
