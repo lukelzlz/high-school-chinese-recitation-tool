@@ -255,6 +255,12 @@ footer a:hover {
   text-decoration: underline;
 }
 
+footer .shortcuts {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+}
+
 @media (max-width: 600px) {
   header h1 {
     font-size: 24px;
@@ -275,5 +281,332 @@ footer a:hover {
 
   .btn-primary {
     grid-column: 1 / 3;
+  }
+}
+
+/* 弹窗样式 */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modal.active {
+  display: block;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background-color: var(--bg-color);
+  margin: 10% auto;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  position: relative;
+  animation: slideIn 0.3s ease-out;
+}
+
+.close-btn {
+  color: var(--text-color);
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: var(--primary-color);
+}
+
+.modal h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 20px;
+  color: var(--primary-color);
+  text-align: center;
+}
+
+.stats-summary {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: rgba(74, 144, 226, 0.1);
+  border-radius: 8px;
+}
+
+.stats-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stats-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.stats-label {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stats-row {
+  display: flex;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.stats-header {
+  font-weight: bold;
+  color: var(--text-light);
+  border-bottom: 2px solid rgba(0,0,0,0.1);
+}
+
+.stats-rank { width: 40px; text-align: center; }
+.stats-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-count { width: 60px; text-align: center; }
+.stats-rate { width: 80px; text-align: right; }
+
+.btn-info {
+  background-color: #00bcd4;
+  grid-column: 1 / 3;
+}
+
+.btn-info:hover {
+  background-color: #0097a7;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* 适配暗黑模式 */
+@media (prefers-color-scheme: dark) {
+  .stats-row { border-bottom-color: rgba(255,255,255,0.05); }
+  .stats-header { border-bottom-color: rgba(255,255,255,0.1); }
+}
+
+/* 句子选择弹窗 */
+.context-display {
+  font-size: 14px;
+  line-height: 2;
+  color: #999;
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: #fafafa;
+  border-radius: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.context-display span {
+  display: inline;
+}
+
+.ctx-done {
+  color: #27ae60;
+}
+
+.ctx-skipped {
+  color: #bbb;
+}
+
+.ctx-current {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.picker-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.picker-from-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #666;
+  margin-left: auto;
+}
+
+.picker-from-input {
+  width: 50px;
+  padding: 4px 6px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.sentence-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.sentence-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.sentence-item:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.sentence-item.active {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.sentence-item.active .sentence-number {
+  background: #667eea;
+  color: white;
+}
+
+.sentence-item input[type="checkbox"] {
+  flex-shrink: 0;
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.sentence-number {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+}
+
+.sentence-text {
+  flex: 1;
+  word-break: break-all;
+}
+
+/* 手写输入区域 */
+.handwriting-section {
+  margin: 16px 0;
+  padding: 16px;
+  background: #fafafa;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  animation: slideIn 0.2s ease-out;
+}
+
+.handwriting-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.handwriting-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.handwriting-toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+#handwritingCanvas {
+  width: 100%;
+  height: 200px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  cursor: crosshair;
+  touch-action: none;
+  display: block;
+}
+
+.handwriting-status {
+  font-size: 13px;
+  color: #999;
+  margin-top: 6px;
+  min-height: 20px;
+  text-align: center;
+}
+
+.handwriting-section.active #handwritingCanvas {
+  border-color: #667eea;
+}
+
+.handwriting-section.recognizing #handwritingCanvas {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .handwriting-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .handwriting-toolbar {
+    justify-content: center;
+  }
+
+  #handwritingCanvas {
+    height: 160px;
+  }
+
+  .handwriting-section {
+    padding: 12px;
   }
 }

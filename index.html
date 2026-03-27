@@ -13,6 +13,7 @@
       <div class="stats">
         <span id="statUsage">使用次数: 0</span>
         <span id="statChars">输入字数: 0</span>
+        <span id="statTotal">篇目: 0</span>
       </div>
     </header>
 
@@ -30,6 +31,8 @@
       </div>
       <div class="progress-text" id="progressText">第 1 句，请背诵 | 进度：0/0</div>
 
+      <div class="context-display" id="contextDisplay"></div>
+
       <div class="hint-display" id="hintDisplay"></div>
 
       <div class="compare-display" id="compareDisplay"></div>
@@ -38,18 +41,60 @@
         <input type="text" id="inputField" placeholder="请输入背诵内容..." autofocus>
       </div>
 
+      <!-- 手写输入区域 -->
+      <div class="handwriting-section" id="handwritingSection" style="display:none;">
+        <div class="handwriting-header">
+          <span class="handwriting-title">手写输入</span>
+          <div class="handwriting-toolbar">
+            <button id="undoStrokeBtn" class="btn btn-secondary btn-sm">↩ 撤销</button>
+            <button id="clearCanvasBtn" class="btn btn-secondary btn-sm">✕ 清空</button>
+            <button id="recognizeBtn" class="btn btn-primary btn-sm">识别</button>
+          </div>
+        </div>
+        <canvas id="handwritingCanvas" width="660" height="200"></canvas>
+        <div class="handwriting-status" id="handwritingStatus"></div>
+      </div>
+
       <div class="button-group">
         <button id="submitBtn" class="btn btn-primary">提交</button>
         <button id="hintBtn" class="btn btn-secondary">提示</button>
         <button id="restartBtn" class="btn btn-warning" disabled>重新开始</button>
+        <button id="selectSentencesBtn" class="btn btn-secondary" disabled>选择句子</button>
         <button id="resetStatsBtn" class="btn btn-danger">重置统计</button>
+        <button id="statsBtn" class="btn btn-info">📊 排行榜</button>
+        <button id="toggleHandwritingBtn" class="btn btn-secondary">手写模式</button>
       </div>
 
       <div class="result-display" id="resultDisplay"></div>
     </main>
 
+    <!-- 统计弹窗 -->
+    <div id="statsModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" id="closeStatsModal">&times;</span>
+        <h2>🏆 背诵排行榜</h2>
+        <div id="statsContent"></div>
+      </div>
+    </div>
+
+    <!-- 句子选择弹窗 -->
+    <div id="sentencePickerModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" id="closeSentencePicker">&times;</span>
+        <h2>选择练习句子</h2>
+        <div class="picker-toolbar">
+          <button id="pickerSelectAll" class="btn btn-secondary btn-sm">全选</button>
+          <button id="pickerDeselectAll" class="btn btn-secondary btn-sm">取消全选</button>
+          <label class="picker-from-label">从第 <input type="number" id="pickerFromInput" class="picker-from-input" min="1" value="1"> 句开始 <button id="pickerFromBtn" class="btn btn-secondary btn-sm">确定</button></label>
+        </div>
+        <div id="sentencePickerContent" class="sentence-list"></div>
+        <button id="pickerStartBtn" class="btn btn-primary" style="width:100%;margin-top:12px;">开始练习（已选 0 句）</button>
+      </div>
+    </div>
+
     <footer>
       <p>纯前端应用 | 数据存储在本地 | <a href="https://github.com/lukelzlz/high-school-chinese-recitation-tool" target="_blank">GitHub</a></p>
+      <p class="shortcuts">快捷键: Enter 提交 | Ctrl+H 提示 | Ctrl+R 重新开始</p>
     </footer>
   </div>
 
