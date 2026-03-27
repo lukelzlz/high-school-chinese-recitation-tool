@@ -10,9 +10,13 @@ const progressText = document.getElementById('progressText');
 const progressFill = document.getElementById('progressFill');
 const hintDisplay = document.getElementById('hintDisplay');
 const compareDisplay = document.getElementById('compareDisplay');
+const contextDisplay = document.getElementById('contextDisplay');
 const resultDisplay = document.getElementById('resultDisplay');
 const statUsage = document.getElementById('statUsage');
 const statChars = document.getElementById('statChars');
+const selectSentencesBtn = document.getElementById('selectSentencesBtn');
+const sentencePickerModal = document.getElementById('sentencePickerModal');
+const sentencePickerContent = document.getElementById('sentencePickerContent');
 
 let filteredKeys = [];
 let currentKey = '';
@@ -21,6 +25,7 @@ let currentIndex = 0;
 let tryCount = 0;
 let correctCount = 0;
 let hintCooldown = false;
+let selectedIndices = null; // null = 全文模式，数组 = 选中的句子索引
 
 // === 统计上报相关 ===
 function simpleHash(str) {
@@ -169,18 +174,66 @@ function renderOptions(keys) {
   });
 }
 
+function getPracticeList() {
+  if (selectedIndices !== null) {
+    return selectedIndices.map(i => sentenceList[i]);
+  }
+  return sentenceList;
+}
+
 function updateProgress() {
-  const total = sentenceList.length || 1;
+  const practiceList = getPracticeList();
+  const total = practiceList.length || 1;
   const current = Math.min(currentIndex + 1, total);
-  const percent = sentenceList.length ? (currentIndex / sentenceList.length) * 100 : 0;
+  const percent = practiceList.length ? (currentIndex / practiceList.length) * 100 : 0;
   progressFill.style.width = `${percent}%`;
 
-  if (currentIndex >= sentenceList.length && sentenceList.length > 0) {
-    const rate = ((correctCount / sentenceList.length) * 100).toFixed(1);
-    progressText.textContent = `全文完成 | 正确率：${rate}% | 正确句数：${correctCount}/${sentenceList.length}`;
+  if (currentIndex >= practiceList.length && practiceList.length > 0) {
+    const rate = ((correctCount / practiceList.length) * 100).toFixed(1);
+    if (selectedIndices !== null) {
+      progressText.textContent = `练习完成（已选 ${practiceList.length} 句）| 正确率：${rate}% | 正确句数：${correctCount}/${practiceList.length}`;
+    } else {
+      progressText.textContent = `全文完成 | 正确率：${rate}% | 正确句数：${correctCount}/${practiceList.length}`;
+    }
   } else {
-    progressText.textContent = `第 ${current} 句，请背诵 | 进度：${current}/${sentenceList.length}`;
+    if (selectedIndices !== null) {
+      progressText.textContent = `第 ${current} 句（已选 ${practiceList.length} 句）| 进度：${current}/${practiceList.length}`;
+    } else {
+      progressText.textContent = `第 ${current} 句，请背诵 | 进度：${current}/${practiceList.length}`;
+    }
   }
+}
+
+function showContext() {
+  if (selectedIndices === null || !sentenceList.length) {
+    contextDisplay.innerHTML = '';
+    return;
+  }
+
+  const practiceList = getPracticeList();
+  if (currentIndex >= practiceList.length) {
+    contextDisplay.innerHTML = '';
+    return;
+  }
+
+  const currentOriginalIndex = selectedIndices[currentIndex];
+  const selectedSet = new Set(selectedIndices);
+  let html = '';
+
+  sentenceList.forEach((sentence, i) => {
+    if (i === currentOriginalIndex) {
+      html += `<span class="ctx-current">（第 ${i + 1} 句 · 当前）</span>`;
+    } else if (i < currentOriginalIndex && selectedSet.has(i)) {
+      // 已背完的选中句子：显示原文
+      html += `<span class="ctx-done">${sentence}</span>`;
+    } else if (!selectedSet.has(i)) {
+      // 未选中的句子：灰显
+      html += `<span class="ctx-skipped">${sentence}</span>`;
+    }
+    // 选中但未背到的句子：不显示（需要用户背诵）
+  });
+
+  contextDisplay.innerHTML = html;
 }
 
 function showCurrentSentence() {
@@ -188,6 +241,7 @@ function showCurrentSentence() {
   compareDisplay.innerHTML = '';
   tryCount = 0;
   updateProgress();
+  showContext();
   inputField.value = '';
   inputField.focus();
 
@@ -196,16 +250,22 @@ function showCurrentSentence() {
     return;
   }
 
-  if (currentIndex >= sentenceList.length) {
+  const practiceList = getPracticeList();
+  if (currentIndex >= practiceList.length) {
     inputField.disabled = true;
     submitBtn.disabled = true;
     hintBtn.disabled = true;
     restartBtn.disabled = false;
-    const rate = ((correctCount / sentenceList.length) * 100).toFixed(1);
-    showResult(`背诵完成<br>总句数：${sentenceList.length}<br>正确数：${correctCount}<br>正确率：${rate}%`, 'success');
-    
+    selectSentencesBtn.disabled = true;
+    const rate = ((correctCount / practiceList.length) * 100).toFixed(1);
+    if (selectedIndices !== null) {
+      showResult(`练习完成（已选 ${practiceList.length} 句）<br>正确数：${correctCount}<br>正确率：${rate}%`, 'success');
+    } else {
+      showResult(`背诵完成<br>总句数：${practiceList.length}<br>正确数：${correctCount}<br>正确率：${rate}%`, 'success');
+    }
+
     // 上报背诵结果到云端
-    reportStats(currentKey, correctCount, sentenceList.length);
+    reportStats(currentKey, correctCount, practiceList.length);
   }
 }
 
@@ -214,12 +274,14 @@ function selectText(key) {
   currentIndex = 0;
   tryCount = 0;
   correctCount = 0;
+  selectedIndices = null;
   sentenceList = splitTextToSentences(TEXTS_LIBRARY[key] || '');
   localStorage.setItem(STORAGE_KEYS.recent, key);
   inputField.disabled = false;
   submitBtn.disabled = false;
   hintBtn.disabled = false;
   restartBtn.disabled = true;
+  selectSentencesBtn.disabled = false;
   showResult(`已加载：${key}`);
   showCurrentSentence();
   addUsage();
@@ -238,13 +300,14 @@ function showCompare(user, correct) {
 }
 
 function onSubmit() {
-  if (!sentenceList.length || currentIndex >= sentenceList.length) return;
+  const practiceList = getPracticeList();
+  if (!practiceList.length || currentIndex >= practiceList.length) return;
 
   const userText = inputField.value.trim();
   addChars(userText.length);
   tryCount += 1;
 
-  const correctText = sentenceList[currentIndex];
+  const correctText = practiceList[currentIndex];
   const userClean = normalizeText(userText);
   const correctClean = normalizeText(correctText);
 
@@ -260,12 +323,13 @@ function onSubmit() {
 }
 
 function onHint() {
-  if (hintCooldown || !sentenceList.length || currentIndex >= sentenceList.length) return;
+  const practiceList = getPracticeList();
+  if (hintCooldown || !practiceList.length || currentIndex >= practiceList.length) return;
   hintCooldown = true;
   hintBtn.disabled = true;
   hintBtn.textContent = '提示中...';
 
-  const text = sentenceList[currentIndex];
+  const text = practiceList[currentIndex];
   const count = Math.min(4, text.length);
   const positions = [];
   const pool = Array.from({ length: text.length }, (_, i) => i);
@@ -312,6 +376,111 @@ function onSearch() {
   }
 }
 
+// === 句子选择弹窗 ===
+function showSentencePicker() {
+  if (!sentenceList.length) return;
+
+  // 确定当前选中的索引集合
+  let checkedSet = new Set();
+  if (selectedIndices !== null) {
+    checkedSet = new Set(selectedIndices);
+  } else {
+    // 全文模式：全部勾选
+    sentenceList.forEach((_, i) => checkedSet.add(i));
+  }
+
+  let html = '';
+  sentenceList.forEach((sentence, index) => {
+    const isChecked = checkedSet.has(index);
+    const isCurrent = selectedIndices !== null && selectedIndices[currentIndex] === index;
+    html += `<label class="sentence-item${isCurrent ? ' active' : ''}" data-index="${index}">`;
+    html += `<input type="checkbox" ${isChecked ? 'checked' : ''}>`;
+    html += `<span class="sentence-number">${index + 1}</span>`;
+    html += `<span class="sentence-text">${sentence}</span>`;
+    html += '</label>';
+  });
+
+  sentencePickerContent.innerHTML = html;
+  updatePickerStartBtn(checkedSet.size);
+  sentencePickerModal.classList.add('active');
+
+  // 复选框事件
+  sentencePickerContent.querySelectorAll('.sentence-item input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      updatePickerStartBtn(sentencePickerContent.querySelectorAll('input[type="checkbox"]:checked').length);
+    });
+  });
+
+  // 设置"从第N句开始"输入框范围
+  const fromInput = document.getElementById('pickerFromInput');
+  fromInput.max = sentenceList.length;
+  fromInput.value = '1';
+}
+
+function updatePickerStartBtn(count) {
+  const btn = document.getElementById('pickerStartBtn');
+  btn.textContent = `开始练习（已选 ${count} 句）`;
+}
+
+function closeSentencePicker() {
+  sentencePickerModal.classList.remove('active');
+}
+
+function startSelectedPractice() {
+  const checkboxes = sentencePickerContent.querySelectorAll('input[type="checkbox"]:checked');
+  const indices = Array.from(checkboxes).map(cb => parseInt(cb.closest('.sentence-item').dataset.index));
+
+  if (!indices.length) {
+    showResult('请至少选择一句', 'error');
+    return;
+  }
+
+  // 如果选了全部句子，使用全文模式
+  if (indices.length === sentenceList.length) {
+    selectedIndices = null;
+  } else {
+    selectedIndices = indices;
+  }
+
+  currentIndex = 0;
+  tryCount = 0;
+  correctCount = 0;
+  inputField.disabled = false;
+  submitBtn.disabled = false;
+  hintBtn.disabled = false;
+  restartBtn.disabled = true;
+  selectSentencesBtn.disabled = false;
+
+  closeSentencePicker();
+  const practiceList = getPracticeList();
+  if (selectedIndices !== null) {
+    showResult(`已选择 ${practiceList.length} 句，开始练习`);
+  }
+  showCurrentSentence();
+  addUsage();
+}
+
+function pickerSelectAll() {
+  sentencePickerContent.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+  updatePickerStartBtn(sentenceList.length);
+}
+
+function pickerDeselectAll() {
+  sentencePickerContent.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  updatePickerStartBtn(0);
+}
+
+function pickerFromN() {
+  const input = document.getElementById('pickerFromInput');
+  const n = parseInt(input.value) || 1;
+  const clamped = Math.max(1, Math.min(n, sentenceList.length));
+  sentencePickerContent.querySelectorAll('.sentence-item').forEach(item => {
+    const idx = parseInt(item.dataset.index);
+    item.querySelector('input[type="checkbox"]').checked = idx >= clamped - 1;
+  });
+  updatePickerStartBtn(sentencePickerContent.querySelectorAll('input[type="checkbox"]:checked').length);
+}
+
 function init() {
   loadStats();
   filteredKeys = Object.keys(TEXTS_LIBRARY);
@@ -331,6 +500,21 @@ function init() {
   restartBtn.addEventListener('click', onRestart);
     resetStatsBtn.addEventListener('click', resetStats);
   statsBtn.addEventListener('click', showStatsModal);
+  selectSentencesBtn.addEventListener('click', showSentencePicker);
+
+  // 句子选择弹窗事件
+  document.getElementById('pickerSelectAll').addEventListener('click', pickerSelectAll);
+  document.getElementById('pickerDeselectAll').addEventListener('click', pickerDeselectAll);
+  document.getElementById('pickerFromBtn').addEventListener('click', pickerFromN);
+  document.getElementById('pickerStartBtn').addEventListener('click', startSelectedPractice);
+
+  const closeSentencePickerBtn = document.getElementById('closeSentencePicker');
+  if (closeSentencePickerBtn) {
+    closeSentencePickerBtn.addEventListener('click', closeSentencePicker);
+  }
+  sentencePickerModal.addEventListener('click', (e) => {
+    if (e.target === sentencePickerModal) closeSentencePicker();
+  });
 
   // 关闭统计弹窗
   const closeStatsModal = document.getElementById('closeStatsModal');
