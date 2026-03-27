@@ -57,9 +57,10 @@ export default {
           return jsonResponse({ error: '识别服务未配置' }, 503);
         }
 
-        const response = await env.AI.run(
-          '@cf/meta/llama-3.2-11b-vision-instruct',
-          {
+        const model = '@cf/meta/llama-3.2-11b-vision-instruct';
+
+        async function recognize() {
+          return await env.AI.run(model, {
             messages: [
               {
                 role: 'user',
@@ -76,14 +77,26 @@ export default {
               },
             ],
             max_tokens: 100,
+          });
+        }
+
+        let response;
+        try {
+          response = await recognize();
+        } catch (err) {
+          if (err.message && err.message.includes('5016')) {
+            await env.AI.run(model, { prompt: 'agree' });
+            response = await recognize();
+          } else {
+            throw err;
           }
-        );
+        }
 
         const text = response?.response?.trim() || '';
         return jsonResponse({ text });
       } catch (err) {
         console.error('Recognition error:', err);
-        return jsonResponse({ error: '识别服务出错: ' + (err.message || err) }, 500);
+        return jsonResponse({ error: '识别服务出错' }, 500);
       }
     }
 
