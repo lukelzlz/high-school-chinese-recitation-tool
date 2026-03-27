@@ -55,6 +55,12 @@
         <div class="handwriting-status" id="handwritingStatus"></div>
       </div>
 
+      <!-- 语音输入状态 -->
+      <div class="voice-status" id="voiceStatus" style="display:none;">
+        <span class="voice-indicator" id="voiceIndicator"></span>
+        <span id="voiceStatusText">录音中...</span>
+      </div>
+
       <div class="button-group">
         <button id="submitBtn" class="btn btn-primary">提交</button>
         <button id="hintBtn" class="btn btn-secondary">提示</button>
@@ -63,6 +69,7 @@
         <button id="resetStatsBtn" class="btn btn-danger">重置统计</button>
         <button id="statsBtn" class="btn btn-info">📊 排行榜</button>
         <button id="toggleHandwritingBtn" class="btn btn-secondary">手写模式</button>
+        <button id="voiceInputBtn" class="btn btn-secondary">🎤 语音输入</button>
       </div>
 
       <div class="result-display" id="resultDisplay"></div>

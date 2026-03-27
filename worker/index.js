@@ -102,6 +102,36 @@ export default {
       }
     }
 
+    // POST /api/transcribe - 语音转文字
+    if (pathname === '/api/transcribe' && request.method === 'POST') {
+      try {
+        const maxSize = 25 * 1024 * 1024; // 25MB Whisper 限制
+        const audioBuffer = await request.arrayBuffer();
+
+        if (audioBuffer.byteLength === 0) {
+          return jsonResponse({ error: '无音频数据' }, 400);
+        }
+        if (audioBuffer.byteLength > maxSize) {
+          return jsonResponse({ error: '音频文件过大' }, 400);
+        }
+
+        if (!env.AI) {
+          return jsonResponse({ error: '语音服务未配置' }, 503);
+        }
+
+        const audioUint8 = new Uint8Array(audioBuffer);
+        const aiResponse = await env.AI.run('@cf/openai/whisper', {
+          audio: [...audioUint8],
+        });
+
+        const text = (aiResponse?.text || '').trim();
+        return jsonResponse({ text });
+      } catch (err) {
+        console.error('Transcription error:', err);
+        return jsonResponse({ error: '语音识别出错: ' + (err.message || err) }, 500);
+      }
+    }
+
     // POST /api/stats - 记录背诵事件
     if (pathname === '/api/stats' && request.method === 'POST') {
       try {

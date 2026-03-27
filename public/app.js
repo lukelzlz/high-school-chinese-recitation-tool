@@ -24,6 +24,9 @@ const undoStrokeBtn = document.getElementById('undoStrokeBtn');
 const clearCanvasBtn = document.getElementById('clearCanvasBtn');
 const recognizeBtn = document.getElementById('recognizeBtn');
 const handwritingStatus = document.getElementById('handwritingStatus');
+const voiceInputBtn = document.getElementById('voiceInputBtn');
+const voiceStatus = document.getElementById('voiceStatus');
+const voiceStatusText = document.getElementById('voiceStatusText');
 
 let filteredKeys = [];
 let currentKey = '';
@@ -40,6 +43,9 @@ let currentStroke = [];
 let currentStrokeStartTime = 0;
 let isRecognizing = false;
 let browserRecognizer = null; // 浏览器 Handwriting Recognition API
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
 
 // === 统计上报相关 ===
 function simpleHash(str) {
@@ -325,6 +331,115 @@ async function recognizeHandwriting() {
   }
 }
 
+// === 语音输入相关 ===
+
+function updateVoiceStatus(text, show) {
+  voiceStatusText.textContent = text;
+  voiceStatus.style.display = show ? 'flex' : 'none';
+}
+
+async function toggleVoiceInput() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+    mediaRecorder = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      transcribeAudio();
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    voiceInputBtn.textContent = '⏹ 停止录音';
+    voiceInputBtn.classList.remove('btn-secondary');
+    voiceInputBtn.classList.add('btn-danger');
+    updateVoiceStatus('录音中... 点击停止按钮结束', true);
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      showResult('麦克风权限被拒绝，请在浏览器设置中允许', 'error');
+    } else if (err.name === 'NotFoundError') {
+      showResult('未检测到麦克风设备', 'error');
+    } else {
+      showResult('无法启动录音: ' + err.message, 'error');
+    }
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  isRecording = false;
+  voiceInputBtn.textContent = '🎤 语音输入';
+  voiceInputBtn.classList.remove('btn-danger');
+  voiceInputBtn.classList.add('btn-secondary');
+}
+
+async function transcribeAudio() {
+  if (audioChunks.length === 0) {
+    updateVoiceStatus('', false);
+    return;
+  }
+
+  const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+  updateVoiceStatus('正在识别语音...', true);
+  voiceInputBtn.disabled = true;
+
+  try {
+    const response = await fetch('/api/transcribe', {
+      method: 'POST',
+      body: audioBlob,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || '语音识别服务暂不可用');
+    }
+
+    const data = await response.json();
+    const text = (data.text || '').trim();
+
+    if (text) {
+      inputField.value += text;
+      updateVoiceStatus('识别结果已添加到输入框', true);
+      setTimeout(() => updateVoiceStatus('', false), 2000);
+    } else {
+      updateVoiceStatus('未能识别语音，请重试', true);
+      setTimeout(() => updateVoiceStatus('', false), 3000);
+    }
+  } catch (err) {
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      showResult('网络不可用，语音识别需要网络连接', 'error');
+    } else {
+      showResult('语音识别出错: ' + err.message, 'error');
+    }
+    updateVoiceStatus('', false);
+  } finally {
+    audioChunks = [];
+    voiceInputBtn.disabled = false;
+  }
+}
+
 function splitTextToSentences(text) {
   if (!text) return [];
   const parts = text
@@ -470,6 +585,7 @@ function showCurrentSentence() {
     restartBtn.disabled = false;
     selectSentencesBtn.disabled = true;
     toggleHandwritingBtn.disabled = true;
+    voiceInputBtn.disabled = true;
     if (handwritingMode) toggleHandwriting();
     const rate = ((correctCount / practiceList.length) * 100).toFixed(1);
     if (selectedIndices !== null) {
@@ -497,6 +613,7 @@ function selectText(key) {
   restartBtn.disabled = true;
   selectSentencesBtn.disabled = false;
   toggleHandwritingBtn.disabled = false;
+  voiceInputBtn.disabled = false;
   showResult(`已加载：${key}`);
   showCurrentSentence();
   addUsage();
@@ -719,6 +836,7 @@ function init() {
 
   // 手写输入事件
   toggleHandwritingBtn.addEventListener('click', toggleHandwriting);
+  voiceInputBtn.addEventListener('click', toggleVoiceInput);
   handwritingCanvas.addEventListener('mousedown', startDrawing);
   handwritingCanvas.addEventListener('mousemove', draw);
   handwritingCanvas.addEventListener('mouseup', stopDrawing);
